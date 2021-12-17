@@ -1,5 +1,5 @@
 .whiteboard-wrapper {
-    background-color: rgb(241, 241, 241);
+    background-color: #f1f1f1;
     width: 800px;
     height: 800px;
 }
@@ -10,6 +10,7 @@ tr {
 }
 
 td {
+    border: 1px solid rgba(149, 198, 255, 0.329);
     width: 10px;
     height: 10px;
 }
