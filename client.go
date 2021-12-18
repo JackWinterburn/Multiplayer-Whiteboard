@@ -25,7 +25,7 @@ func Upgrade(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
 }
 
 type Client struct {
-	ID   string
+	ID   int
 	Conn *websocket.Conn
 	Pool *Pool
 }

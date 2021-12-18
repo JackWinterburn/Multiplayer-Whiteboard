@@ -2,6 +2,7 @@ const COLOR_PICKER = document.getElementById("color-picker");
 const WHITEBOARD = document.getElementById("whiteboard");
 const CLEAR_BUTN = document.getElementById("clear-butn");
 const ERASER = document.getElementById("eraser");
+const GRID_LINES_TOGGLE = document.getElementById("gridlines");
 const TABLE_ROWS = 80;
 const TABLE_COLS = 80;
 const socket = new WebSocket(`ws://${document.location.host}/ws`);
@@ -10,14 +11,24 @@ let currentColor = "#0000ff";
 
 socket.onmessage = (e) => {
     let msg = JSON.parse(e.data).body;
-    console.log(msg);
     if(msg.startsWith("Update cell")) {
         let [_, __, row, col, color] = msg.split(" ");
-        console.log(row, col, color)
         onChange(row, col, color);
     } else if(msg === "Clear") {
         clearBoard();
-    }
+    } else if(msg === "Send state") {
+        socket.send(`Update board: ${JSON.stringify(whiteboardState)}`);
+    } else if(msg.startsWith("Update board")) {
+        whiteboardState = JSON.parse(msg.substring(14));
+        WHITEBOARD.innerHTML = "";
+        generateWhiteboard();
+    } 
+}
+
+GRID_LINES_TOGGLE.onclick = () => {
+    Array.prototype.forEach.call(document.getElementsByClassName('cell'), (cell)  => {
+        cell.classList.toggle("grid");
+    });
 }
 
 COLOR_PICKER.addEventListener("change", (e) => currentColor = e.target.value);
@@ -62,6 +73,8 @@ function generateWhiteboard() {
         for(j = 0; j < TABLE_COLS; j++) {
             let td = document.createElement("td");
             td.id = `${i} ${j}`;
+            td.className="cell grid";
+            td.style.background = whiteboardState[i][j].color;
             td.addEventListener("mouseover", (e) => {
                 if(mouseIsDown) {
                     let [row, col] = e.target.id.split(" ");
@@ -98,8 +111,7 @@ function updateCell(row, col, color) {
 
 function clearBoard() {
     WHITEBOARD.innerHTML = "";
-    generateWhiteboard();
+    whiteboardState = [];
     generateDefaultWhiteboardState();
+    generateWhiteboard();
 }
-
-console.log(whiteboardState)
