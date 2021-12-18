@@ -9,20 +9,23 @@ let mouseIsDown = false;
 let currentColor = "#0000ff";
 
 socket.onmessage = (e) => {
-    console.log(JSON.parse(e.data));
+    let msg = JSON.parse(e.data).body;
+    console.log(msg);
+    if(msg.startsWith("Update cell")) {
+        let [_, __, row, col, color] = msg.split(" ");
+        console.log(row, col, color)
+        onChange(row, col, color);
+    } else if(msg === "Clear") {
+        clearBoard();
+    }
 }
 
-socket.onclose = (e) => {
-    console.log("Websocket connection lost...");
-}
-
-COLOR_PICKER.onchange = (e) => currentColor = e.target.value;
-ERASER.onclick = () => currentColor="#f1f1f1", COLOR_PICKER.value = "#f1f1f1";
-CLEAR_BUTN.onclick = "click", () => {
-    WHITEBOARD.innerHTML = "";
-    generateWhiteboard();
-    generateDefaultWhiteboardState();
-}
+COLOR_PICKER.addEventListener("change", (e) => currentColor = e.target.value);
+CLEAR_BUTN.addEventListener("click", () => {
+    socket.send("Clear");
+    clearBoard();
+});
+ERASER.addEventListener("click", () => {currentColor="#f1f1f1", COLOR_PICKER.value = "#f1f1f1"})
 
 document.body.onmousedown = e => {
     if(e.button == 0){ mouseIsDown = true; }
@@ -60,9 +63,17 @@ function generateWhiteboard() {
             let td = document.createElement("td");
             td.id = `${i} ${j}`;
             td.addEventListener("mouseover", (e) => {
-                if(mouseIsDown) {onChange(e)};
+                if(mouseIsDown) {
+                    let [row, col] = e.target.id.split(" ");
+                    socket.send(`Update cell: ${row} ${col} ${currentColor}`);
+                    onChange(row, col, currentColor);
+                };
             })
-            td.addEventListener("click", (e) => onChange(e));
+            td.addEventListener("click", (e) => {
+                let [row, col] = e.target.id.split(" ");
+                socket.send(`Update cell: ${row} ${col} ${currentColor}`);
+                onChange(row, col, currentColor);
+            });
 
             row.appendChild(td);
         }
@@ -71,17 +82,24 @@ function generateWhiteboard() {
 
 generateWhiteboard();
 
-function onChange(e) {
-    let [row, col] = e.target.id.split(" ");
+function onChange(row, col, color) {
     whiteboardState[row][col] = {
         row,
         col,
-        colour: currentColor,
+        color,
     };
 
-    updateCell(row, col)
+    updateCell(row, col, color);
 }
 
-function updateCell(row, col) {
-    WHITEBOARD.childNodes[row].childNodes[col].style.background = currentColor;
+function updateCell(row, col, color) {
+    WHITEBOARD.childNodes[row].childNodes[col].style.background = color;
 }
+
+function clearBoard() {
+    WHITEBOARD.innerHTML = "";
+    generateWhiteboard();
+    generateDefaultWhiteboardState();
+}
+
+console.log(whiteboardState)
