@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -11,71 +11,44 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-type Client struct {
-	pool *Pool
-	conn *websocket.Conn
-	send chan []byte
-}
-
-// Pumps messages from client to server
-func (c *Client) readPump() {
-	defer func() {
-		c.pool.unregister <- c
-		c.conn.Close()
-	}()
-
-	for {
-		_, message, err := c.conn.ReadMessage()
-		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("%v", err)
-			}
-			break
-		}
-		message = bytes.TrimSpace(message)
-		c.pool.broadcast <- message
-	}
-}
-
-// Pumps messages from server to all clients
-func (c *Client) writePump() {
-	message, ok := <-c.send
-	if !ok {
-		// The hub closed the channel.
-		c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-		return
-	}
-
-	w, err := c.conn.NextWriter(websocket.TextMessage)
-	if err != nil {
-		return
-	}
-	w.Write(message)
-
-	// Add queued chat messages to the current websocket message.
-	n := len(c.send)
-	for i := 0; i < n; i++ {
-		w.Write(<-c.send)
-	}
-
-	if err := w.Close(); err != nil {
-		return
-	}
-}
-
-func serveWs(pool *Pool, w http.ResponseWriter, r *http.Request) {
+func Upgrade(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
-		return
+		return nil, err
 	}
-	client := &Client{pool: pool, conn: conn, send: make(chan []byte, 256)}
-	client.pool.register <- client
 
-	// Allow collection of memory referenced by the caller by doing all work in
-	// new goroutines.
-	go client.writePump()
-	go client.readPump()
+	return conn, nil
+}
+
+type Client struct {
+	ID   string
+	Conn *websocket.Conn
+	Pool *Pool
+}
+
+type Message struct {
+	Type int    `json:"type"`
+	Body string `json:"body"`
+}
+
+func (c *Client) Read() {
+	defer func() {
+		c.Pool.Unregister <- c
+		c.Conn.Close()
+	}()
+
+	for {
+		messageType, p, err := c.Conn.ReadMessage()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		message := Message{Type: messageType, Body: string(p)}
+		c.Pool.Broadcast <- message
+		fmt.Printf("Message Received: %+v\n", message)
+	}
 }

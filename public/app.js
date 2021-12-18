@@ -1,19 +1,28 @@
 const COLOR_PICKER = document.getElementById("color-picker");
 const WHITEBOARD = document.getElementById("whiteboard");
 const CLEAR_BUTN = document.getElementById("clear-butn");
+const ERASER = document.getElementById("eraser");
 const TABLE_ROWS = 80;
 const TABLE_COLS = 80;
-const ERASER = document.getElementById("eraser");
+const socket = new WebSocket(`ws://${document.location.host}/ws`);
 let mouseIsDown = false;
 let currentColor = "#0000ff";
 
-COLOR_PICKER.addEventListener("change", (e) => currentColor = e.target.value);
-CLEAR_BUTN.addEventListener("click", () => {
+socket.onmessage = (e) => {
+    console.log(JSON.parse(e.data));
+}
+
+socket.onclose = (e) => {
+    console.log("Websocket connection lost...");
+}
+
+COLOR_PICKER.onchange = (e) => currentColor = e.target.value;
+ERASER.onclick = () => currentColor="#f1f1f1", COLOR_PICKER.value = "#f1f1f1";
+CLEAR_BUTN.onclick = "click", () => {
     WHITEBOARD.innerHTML = "";
     generateWhiteboard();
     generateDefaultWhiteboardState();
-})
-ERASER.addEventListener("click", () => {currentColor="#f1f1f1", COLOR_PICKER.value = "#f1f1f1"})
+}
 
 document.body.onmousedown = e => {
     if(e.button == 0){ mouseIsDown = true; }
@@ -22,8 +31,6 @@ document.body.onmousedown = e => {
 document.body.onmouseup = () => {
     mouseIsDown = false;
 }
-
-// @todo generate whiteboard from json object
 
 let whiteboardState = [];
 function generateDefaultWhiteboardState() {

@@ -1,14 +1,30 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 )
 
-func main() {
-	pool := newPool()
+func serveWs(pool *Pool, w http.ResponseWriter, r *http.Request) {
+	fmt.Println("WebSocket Endpoint Hit")
+	conn, err := Upgrade(w, r)
+	if err != nil {
+		fmt.Fprintf(w, "%+v\n", err)
+	}
 
-	go pool.run()
+	client := &Client{
+		Conn: conn,
+		Pool: pool,
+	}
+
+	pool.Register <- client
+	client.Read()
+}
+
+func main() {
+	pool := NewPool()
+	go pool.Start()
 
 	http.Handle("/", http.FileServer(http.Dir("public")))
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
