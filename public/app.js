@@ -7,6 +7,7 @@ const TABLE_ROWS = 80;
 const TABLE_COLS = 80;
 const socket = new WebSocket(`ws://${document.location.host}/ws`);
 let mouseIsDown = false;
+let gridlines = true
 let currentColor = "#0000ff";
 
 socket.onmessage = (e) => {
@@ -26,6 +27,7 @@ socket.onmessage = (e) => {
 }
 
 GRID_LINES_TOGGLE.onclick = () => {
+    gridlines = !gridlines;
     Array.prototype.forEach.call(document.getElementsByClassName('cell'), (cell)  => {
         cell.classList.toggle("grid");
     });
@@ -73,7 +75,7 @@ function generateWhiteboard() {
         for(j = 0; j < TABLE_COLS; j++) {
             let td = document.createElement("td");
             td.id = `${i} ${j}`;
-            td.className="cell grid";
+            td.className=`cell ${gridlines ? "grid":""}`;
             td.style.background = whiteboardState[i][j].color;
             td.addEventListener("mouseover", (e) => {
                 if(mouseIsDown) {
